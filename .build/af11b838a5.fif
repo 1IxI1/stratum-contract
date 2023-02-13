@@ -1,0 +1,201 @@
+"Asm.fif" include
+// automatically generated from `/home/victor/sh1t/ton-smc-deployer/src/xton/stdlib.func` `func/stratum.fc` 
+PROGRAM{
+  DECLPROC load_data
+  DECLPROC store_data
+  DECLPROC send_msg
+  DECLPROC transfer_selfdestroy
+  DECLPROC has_access?
+  DECLPROC recv_internal
+  DECLPROC get_dns_item_address
+  129092 DECLMETHOD editorship_expires_at
+  load_data PROC:<{
+    // 
+    c4 PUSH	//  _1
+    CTOS	//  ds
+    LDMSGADDR	//  _3 ds
+    64 LDU	//  _3 _5 ds
+    LDMSGADDR	//  _3 _5 _8 ds
+    LDDICT	//  _3 _5 _8 _19 _18
+    DROP	//  _3 _5 _8 _10
+  }>
+  store_data PROC:<{
+    //  domain_address expire_at return_address filters
+    NEWC	//  domain_address expire_at return_address filters _4
+    s0 s4 XCHG2	//  filters expire_at return_address _4 domain_address
+    STSLICER	//  filters expire_at return_address _5
+    s1 s2 XCHG	//  filters return_address expire_at _5
+    64 STU	//  filters return_address _7
+    SWAP	//  filters _7 return_address
+    STSLICER	//  filters _8
+    STDICT	//  _9
+    ENDC	//  _10
+    c4 POP
+  }>
+  send_msg PROCINLINE:<{
+    //  to_address amount op query_id payload send_mode
+    0 PUSHINT	//  to_address amount op query_id payload send_mode _7=0
+    16 PUSHINT	//  to_address amount op query_id payload send_mode _7=0 _8=16
+    NEWC	//  to_address amount op query_id payload send_mode _7=0 _8=16 _9
+    6 STU	//  to_address amount op query_id payload send_mode _7=0 _11
+    s0 s7 XCHG2	//  _7=0 amount op query_id payload send_mode _11 to_address
+    STSLICER	//  _7=0 amount op query_id payload send_mode _12
+    s0 s5 XCHG2	//  _7=0 send_mode op query_id payload _12 amount
+    STVARUINT16	//  _7=0 send_mode op query_id payload _13
+    s1 s5 XCHG	//  payload send_mode op query_id _7=0 _13
+    107 STU	//  payload send_mode op query_id _27
+    s1 s2 XCHG	//  payload send_mode query_id op _27
+    32 STU	//  payload send_mode query_id _29
+    64 STU	//  payload send_mode msg
+    s2 PUSH	//  payload send_mode msg payload
+    ISNULL	//  payload send_mode msg _32
+    NOT	//  payload send_mode msg _33
+    IF:<{	//  payload send_mode msg
+      ROT	//  send_mode msg payload
+      STBR	//  send_mode msg
+      SWAP	//  msg send_mode
+    }>ELSE<{
+      s2 POP	//  msg send_mode
+    }>
+    SWAP	//  send_mode msg
+    ENDC	//  send_mode _35
+    SWAP	//  _35 send_mode
+    SENDRAWMSG
+  }>
+  transfer_selfdestroy PROC:<{
+    //  domain_address to_address
+    DROP	//  domain_address
+    0 PUSHINT	//  domain_address _2=0
+    1607220500 PUSHINT	//  domain_address _2=0 _3=1607220500
+    NOW	//  domain_address _2=0 _3=1607220500 _4
+    PUSHNULL	//  domain_address _2=0 _3=1607220500 _4 _5
+    160 PUSHINT	//  domain_address _2=0 _3=1607220500 _4 _5 _8
+    send_msg INLINECALLDICT
+  }>
+  has_access? PROC:<{
+    //  editor_address category filters
+    s0 s2 XCHG	//  filters category editor_address
+    11 LDSLICE	//  filters category _37 _36
+    NIP	//  filters category editor_address
+    256 LDU	//  filters category _39 _38
+    DROP	//  filters category hashpart
+    ROT
+    8 PUSHPOW2	//  category hashpart filters _12=256
+    DICTUGETREF	//  category filter success
+    SWAP	//  category success filter
+    CTOS	//  category success fs
+    SWAP	//  category fs success
+    NOT	//  category fs _16
+    IFJMP:<{	//  category fs
+      2DROP	// 
+      0 PUSHINT	//  _17=0
+    }>	//  category fs
+    1 LDI	//  category white_list? fs
+    LDDICT	//  category white_list? _45 _44
+    DROP	//  category white_list? filter_categories
+    s1 s2 XCHG
+    64 PUSHINT	//  white_list? category filter_categories _27=64
+    DICTUGET
+    NULLSWAPIFNOT	//  white_list? expiration in_list?
+    IFJMP:<{	//  white_list? expiration
+      SWAP	//  expiration white_list?
+      IF:<{	//  expiration
+        64 PLDU	//  _29
+      }>ELSE<{	//  expiration
+        DROP	// 
+        0 PUSHINT	//  _29=0
+      }>
+    }>	//  white_list? expiration
+    DROP	//  white_list?
+    IF:<{	// 
+      0 PUSHINT	//  _33=0
+    }>ELSE<{	// 
+      -1 PUSHINT	//  _33=-1
+    }>
+  }>
+  recv_internal PROC:<{
+    //  in_msg_full in_msg_body
+    SWAP	//  in_msg_body in_msg_full
+    CTOS	//  in_msg_body cs
+    4 LDU	//  in_msg_body flags cs
+    SWAP
+    1 PUSHINT	//  in_msg_body cs flags _8=1
+    AND	//  in_msg_body cs _9
+    IFJMP:<{	//  in_msg_body cs
+      2DROP	// 
+    }>	//  in_msg_body cs
+    LDMSGADDR	//  in_msg_body _59 _58
+    DROP	//  in_msg_body sender_address
+    load_data CALLDICT	//  in_msg_body sender_address _60 _61 _62 _63
+    NIP	//  in_msg_body sender_address domain_address expire_at filters
+    SWAP
+    NOW	//  in_msg_body sender_address domain_address filters expire_at _18
+    LESS	//  in_msg_body sender_address domain_address filters _19
+    IFJMP:<{	//  in_msg_body sender_address domain_address filters
+      4 BLKDROP	// 
+    }>	//  in_msg_body sender_address domain_address filters
+    s3 PUSH	//  in_msg_body sender_address domain_address filters in_msg_body
+    SEMPTY	//  in_msg_body sender_address domain_address filters _22
+    IF:<{	//  in_msg_body sender_address domain_address filters
+      0 PUSHINT	//  in_msg_body sender_address domain_address filters _23=0
+    }>ELSE<{	//  in_msg_body sender_address domain_address filters
+      s0 s3 XCHG	//  filters sender_address domain_address in_msg_body
+      32 LDU	//  filters sender_address domain_address _23 in_msg_body
+      s4 s4 XCHG2	//  in_msg_body sender_address domain_address filters _23
+    }>	//  in_msg_body sender_address domain_address filters op
+    DUP	//  in_msg_body sender_address domain_address filters op op
+    0 EQINT	//  in_msg_body sender_address domain_address filters op _29
+    IFJMP:<{	//  in_msg_body sender_address domain_address filters op
+      s2 s4 XCHG
+      4 BLKDROP	//  domain_address
+      0 PUSHINT	//  domain_address _30=0
+      s0 s0 PUSH2	//  domain_address _30=0 _31=0 _32=0
+      PUSHNULL	//  domain_address _30=0 _31=0 _32=0 _33
+      64 PUSHINT	//  domain_address _30=0 _31=0 _32=0 _33 _34=64
+      send_msg INLINECALLDICT
+    }>	//  in_msg_body sender_address domain_address filters op
+    s0 s4 XCHG	//  op sender_address domain_address filters in_msg_body
+    64 LDU	//  op sender_address domain_address filters query_id in_msg_body
+    s5 PUSH
+    1320284409 PUSHINT	//  op sender_address domain_address filters query_id in_msg_body op _40=1320284409
+    EQUAL	//  op sender_address domain_address filters query_id in_msg_body _41
+    IFJMP:<{	//  op sender_address domain_address filters query_id in_msg_body
+      DUP	//  op sender_address domain_address filters query_id in_msg_body in_msg_body
+      256 PLDU	//  op sender_address domain_address filters query_id in_msg_body key
+      s5 s0 s3 XCHG3	//  op query_id domain_address in_msg_body sender_address key filters
+      has_access? CALLDICT	//  op query_id domain_address in_msg_body access
+      500 THROWIFNOT
+      0 PUSHINT	//  op query_id domain_address in_msg_body _49=0
+      NEWC
+      ROT	//  op query_id domain_address _49=0 _50 in_msg_body
+      STSLICER	//  op query_id domain_address _49=0 _51
+      s4 s3 s0 XCHG3
+      64 PUSHINT	//  domain_address _49=0 op query_id _51 _52=64
+      send_msg INLINECALLDICT
+    }>	//  op sender_address domain_address filters query_id in_msg_body
+    6 BLKDROP	// 
+    24 PUSHPOW2DEC	//  _54=16777215
+    THROWANY
+  }>
+  get_dns_item_address PROC:<{
+    // 
+    c4 PUSH	//  _1
+    CTOS	//  ds
+    LDMSGADDR	//  _7 _6
+    DROP	//  domain_addr
+  }>
+  editorship_expires_at PROC:<{
+    //  editor_address category
+    load_data CALLDICT	//  editor_address category _11 _12 _13 _14
+    NIP
+    s2 POP	//  editor_address category filters expire_at
+    3 -ROLL	//  expire_at editor_address category filters
+    has_access? CALLDICT	//  expire_at access
+    DUP	//  expire_at access access
+    -1 EQINT	//  expire_at access _10
+    IFJMP:<{	//  expire_at access
+      DROP	//  expire_at
+    }>	//  expire_at access
+    NIP	//  access
+  }>
+}END>c

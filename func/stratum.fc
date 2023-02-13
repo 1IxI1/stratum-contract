@@ -1,0 +1,169 @@
+;; DNS Stratum Contract for acting with ".ton" and similar
+;; contracts https://github.com/ton-blockchain/dns-contract.
+;;
+;; Made in Feb 2023 by @topIXItop
+;;
+;; Storage
+;;
+;; MsgAddr domain_address
+;; Uint64 expire_at
+;; MsgAddr return_address
+;; MaybeDict filters
+
+const int op::change_dns_record = 0x4eb1f0f9;
+const int op::transfer = 0x5fcc3d14;
+
+(slice, int, slice, cell) load_data() {
+    slice ds = get_data().begin_parse();
+    return (ds~load_msg_addr(),
+            ds~load_uint(64),
+            ds~load_msg_addr(),
+            ds~load_dict());
+}
+
+() store_data(slice domain_address, int expire_at, slice return_address, cell filters) {
+    set_data(
+      begin_cell()
+        .store_slice(domain_address)
+        .store_uint(expire_at, 64)
+        .store_slice(return_address)
+        .store_dict(filters)
+      .end_cell()
+    );
+}
+
+() send_msg(slice to_address, int amount, int op, int query_id, builder payload, int send_mode) impure inline {
+    var msg = begin_cell()
+            .store_uint(0x10, 6) ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 010000
+            .store_slice(to_address)
+            .store_coins(amount)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(op, 32)
+            .store_uint(query_id, 64);
+
+    if (~ builder_null?(payload)) {
+        msg = msg.store_builder(payload);
+    }
+
+    send_raw_message(msg.end_cell(), send_mode);
+}
+
+() transfer_selfdestroy(slice domain_address, slice to_address) impure inline {
+    cell msg = begin_cell()
+                 .store_uint(0x10, 6)
+                 .store_slice(domain_address)
+                 .store_coins(0)
+                 .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                 .store_ref(begin_cell()
+                   .store_uint(op::transfer, 32)
+                   .store_uint(now(), 64)
+                   .store_slice(to_address) ;; dst
+                   .store_slice(to_address) ;; response
+                   .store_uint(0, 1) ;; null custom payload
+                   .store_grams(0) ;; forward amount
+                   .store_uint(0, 1) ;; no forward
+                 .end_cell())
+               .end_cell();
+
+    send_raw_message(msg, 128 + 32);
+}
+
+int has_access?(slice editor_address, int category, cell filters) impure {
+    ;; 0 - has no access
+    ;; -1 - has access, but no exact expiration
+    ;; timestamp - has access until timestamp
+    editor_address~skip_bits(11); ;; 2 - addr_code, 1 - anycast, 8 - workchain_id
+    int hashpart = editor_address~load_uint(256);
+
+    (cell filter, int success) = filters.udict_get_ref?(256, hashpart);
+
+    if (~ success) { ;; address is not in list and can't edit anything
+        return 0;
+    }
+
+    slice fs = filter.begin_parse();
+
+    int white_list? = fs~load_int(1);
+    cell filter_categories = fs~load_dict();
+
+    (slice expiration, int in_list?) = filter_categories.udict_get?(256, category);
+
+    if (in_list?) {
+        if (white_list?) {
+            int filter_expire_at = expiration~load_uint(64);
+
+            if (filter_expire_at < now()) {
+                return 0;
+            }
+            else {
+                return filter_expire_at;
+            }
+        }
+        else {
+            return 0;
+        }
+    }
+    else {
+        return white_list? ? 0 : -1;
+    }
+}
+
+() recv_internal(cell in_msg_full, slice in_msg_body) impure {
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+
+    if (flags & 1) { ;; ignore all bounced messages
+        return ();
+    }
+
+    slice sender_address = cs~load_msg_addr();
+
+    (slice domain_address, int expire_at, slice return_address, cell filters) = load_data();
+
+    if (expire_at < now()) {
+        transfer_selfdestroy(domain_address, return_address);
+        return ();
+    }
+
+    int op = in_msg_body.slice_empty?() ? 0 : in_msg_body~load_uint(32);
+
+    if (op == 0) { ;; prevent domain from releasing
+        send_msg(domain_address, 0, 0, 0, null(), 64);
+        return ();
+    }
+
+    int query_id = in_msg_body~load_uint(64);
+
+    if (op == op::change_dns_record) {
+        int key = in_msg_body.preload_uint(256); ;; keeping payload in slice
+        int access = has_access?(sender_address, key, filters);
+        throw_if(500, access == 0); ;; no access
+
+        send_msg(
+            domain_address, 0, op, query_id,
+            begin_cell().store_slice(in_msg_body), 64
+        );
+
+        return ();
+    }
+
+    throw(0xffff);
+}
+
+slice get_dns_item_address() method_id {
+    slice ds = get_data().begin_parse();
+    slice domain_addr = ds~load_msg_addr();
+    return domain_addr;
+}
+
+int editorship_expires_at(slice editor_address, int category) method_id {
+    (_, int expire_at, _, cell filters) = load_data();
+
+    int access = has_access?(editor_address, category, filters);
+
+    if (access == -1) { ;; no exact expiration
+        return expire_at;
+    }
+
+    return access;
+}
