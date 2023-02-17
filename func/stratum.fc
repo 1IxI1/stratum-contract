@@ -5,15 +5,15 @@
 ;;
 ;; Storage
 ;;
-;; MsgAddr domain_address
+;; MsgAddressInt domain_address
 ;; Uint64 expire_at
-;; MsgAddr return_address
-;; MaybeDict filters
+;; MsgAddressInt return_address
+;; HashmapE filters
 
 const int op::change_dns_record = 0x4eb1f0f9;
 const int op::transfer = 0x5fcc3d14;
 
-(slice, int, slice, cell) load_data() {
+(slice, int, slice, cell) load_data() impure {
     slice ds = get_data().begin_parse();
     return (ds~load_msg_addr(),
             ds~load_uint(64),
@@ -21,16 +21,16 @@ const int op::transfer = 0x5fcc3d14;
             ds~load_dict());
 }
 
-() store_data(slice domain_address, int expire_at, slice return_address, cell filters) {
-    set_data(
-      begin_cell()
-        .store_slice(domain_address)
-        .store_uint(expire_at, 64)
-        .store_slice(return_address)
-        .store_dict(filters)
-      .end_cell()
-    );
-}
+;; () store_data(slice domain_address, int expire_at, slice return_address, cell filters) impure {
+;;     set_data(
+;;       begin_cell()
+;;         .store_slice(domain_address)
+;;         .store_uint(expire_at, 64)
+;;         .store_slice(return_address)
+;;         .store_dict(filters)
+;;       .end_cell()
+;;     );
+;; }
 
 () send_msg(slice to_address, int amount, int op, int query_id, builder payload, int send_mode) impure inline {
     var msg = begin_cell()
@@ -68,7 +68,7 @@ const int op::transfer = 0x5fcc3d14;
     send_raw_message(msg, 128 + 32);
 }
 
-int has_access?(slice editor_address, int category, cell filters) impure {
+int has_access?(slice editor_address, int category, cell filters) impure inline {
     ;; 0 - has no access
     ;; -1 - has access, but no exact expiration
     ;; timestamp - has access until timestamp
@@ -161,7 +161,7 @@ int editorship_expires_at(slice editor_address, int category) method_id {
 
     int access = has_access?(editor_address, category, filters);
 
-    if (access == -1) { ;; no exact expiration
+    if (access) { ;; if -1 then no exact expiration
         return expire_at;
     }
 

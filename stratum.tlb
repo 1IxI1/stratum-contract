@@ -1,0 +1,45 @@
+bit$_ (## 1) = Bit;
+bool_false$0 = Bool;
+bool_true$1 = Bool;
+
+hm_edge#_ {n:#} {X:Type} {l:#} {m:#} label:(HmLabel ~l n)
+          {n = (~m) + l} node:(HashmapNode m X) = Hashmap n X;
+
+hmn_leaf#_ {X:Type} value:X = HashmapNode 0 X;
+hmn_fork#_ {n:#} {X:Type} left:^(Hashmap n X)
+           right:^(Hashmap n X) = HashmapNode (n + 1) X;
+
+hml_short$0 {m:#} {n:#} len:(Unary ~n) {n <= m} s:(n * Bit) = HmLabel ~n m;
+hml_long$10 {m:#} n:(#<= m) s:(n * Bit) = HmLabel ~n m;
+hml_same$11 {m:#} v:Bit n:(#<= m) = HmLabel ~n m;
+
+unary_zero$0 = Unary ~0;
+unary_succ$1 {n:#} x:(Unary ~n) = Unary ~(n + 1);
+
+hme_empty$0 {n:#} {X:Type} = HashmapE n X;
+hme_root$1 {n:#} {X:Type} root:^(Hashmap n X) = HashmapE n X;
+
+
+nothing$0 {X:Type} = Maybe X;
+just$1 {X:Type} value:X = Maybe X;
+
+anycast_info$_ depth:(#<= 30) { depth >= 1 }
+   rewrite_pfx:(bits depth) = Anycast;
+
+addr_std$10 anycast:(Maybe Anycast)
+   workchain_id:int8 address:bits256  = MsgAddressInt;
+
+
+
+categories_expirations#_ (HashmapE 256 uint64) = Categories;
+
+filter_params#_ white_list: Bool
+    categories: Categories = FilterParams;
+
+_ (HashmapE 256 FilterParams) = Filters;
+
+storage#_ domain_address: MsgAddressInt
+    expire_at: uint64
+    return_address: MsgAddressInt
+    filters: Filters
+    = Storage;
