@@ -1,13 +1,13 @@
 ;; DNS Stratum Contract for acting with ".ton" and similar
 ;; contracts https://github.com/ton-blockchain/dns-contract.
 ;;
-;; Made in Feb 2023 by @topIXItop
+;; Made in March, 2023 by @vimlover
 ;;
 ;; Storage
 ;;
 ;; Bool init?
 ;; MsgAddressInt domain_address
-;; Uint64 expire_at
+;; uint64 expire_at
 ;; MsgAddressInt return_address
 ;; HashmapE filters
 
@@ -173,13 +173,23 @@ int has_access?(slice editor_address, int category, cell filters) impure inline 
 
 slice get_dns_item_address() method_id {
     slice ds = get_data().begin_parse();
-    ds~skip_bits(1);
+    int init? = ds~load_int(1);
+
+    if (~ init?) {
+        return null();
+    }
+
     slice domain_addr = ds~load_msg_addr();
     return domain_addr;
 }
 
+(int, slice) get_expiration_data() method_id {
+    (_, _, int expire_at, slice return_address, _) = load_data();
+    return (expire_at, return_address);
+}
+
 int editorship_expires_at(slice editor_address, int category) method_id {
-    (int init?, _, int expire_at, _, cell filters) = load_data();
+    (_, _, int expire_at, _, cell filters) = load_data();
 
     int access = has_access?(editor_address, category, filters);
 

@@ -4,39 +4,39 @@
 - **type**: Contract Interface
 - **authors**: [Victor Syshchenko](https://github.com/1ixi1)
   (the idea)
-- **created**: 19.01.2023 *(fill with current date)*
+- **created**: 21.03.2023 *(fill with current date)*
 - **replaces**: -
 - **replaced by**: -
 
 
 # Summary
 
-DNS Stratum Contract - это прослойка между пользователями и доменом,
-дающая первым возможность управлять записями в домене путем отправки
-сообщений с телом соответствующего формата не напрямую к домену, но
-к прослойке, которая фильтрует сообщения с некоторыми параметрами
-иперенаправляет их к домену.
+DNS Stratum Contract is a layer between users and a domain, allowing users
+to manage records in the domain by sending messages with the body of the
+corresponding format not directly to the domain, but to the layer that
+filters the editing of certain records and forwards messages to the
+domain.
 
 
 # Motivation
 
-Потенциал использования записей в TON DNS очень велик. Их можно
-использовать не только для привязки кошелька или адреса в TON Storage, но
-при желании и для установки личных данных, контактов и почти чего угодно.
+The potential use of records in TON DNS is very significant. They can be
+used not only to link a wallet or address in TON Storage, but also to
+establish personal data, contacts, and almost anything else, if desired.
 
-Иногда какому-либо сервису нужна гарантия, что определенная запись
-в домене будет неизменна на протяжении некоторого времени или же совсем.
+Sometimes, a certain service needs a guarantee that a particular record in
+the domain will remain unchanged for a certain period of time, or even
+permanently.
 
-Чтобы разработчики не придумывали различные новые контракты для этих
-целей, нужно создать стандарт, который будет главным образом служить
-моделью для **обнаружения** контрактов такого типа.
+To prevent developers from coming up with various new contracts for these
+purposes, a standard needs to be created that will primarily serve as
+a model for discovering contracts of this type.
 
 
 # Guide / Useful links
-1. [Reference DNS Stratum smart contract]()
-2. [Reference DNS smart contracts](https://github.com/ton-blockchain/dns-contract)
-3. [Interaction with reference DNS Stratum contract example in Python]()
 
+1. [Reference DNS Stratum smart contract](contracts/stratum_contract.fc)
+2. [Reference TON DNS smart contracts](https://github.com/ton-blockchain/dns-contract)
 
 
 # Specification
@@ -53,18 +53,16 @@ standart **should**:
 A smart contract **must** contain:
 1. `editorship_expires_at(slice editor_address, int category)`
    returns `int`:
-   * `2**64 - 1` if expiration time for editorship is not set.
    * `0` if address has no editorship on this category.
-   * and timestamp of editorship expiration time otherwise.
-
-   \
-   When calling `editorship_expires_at(null(), 0)` the smart contract
-   **should** return the hash part of the address, to wich the contract
-   **may** transfer DNS item after the expiration of all editorship
-   records.
+   * and timestamp of editorship/stratum expiration time otherwise.
 
 2. `get_dns_item_address()` returns `slice dns_item_address` -
-   an address of the DNS item on which the contract targets on.
+   address of the dns item to which stratum filters messages.
+
+3. `get_expiration_data()` returns `(int expiration_time, slice return_address)`
+   `expiration_time` - timestamp of the time after which the contract
+   may self-destruct after any run and transfer the dns item to
+   the address `return_address`.
 
 
 # Drawbacks

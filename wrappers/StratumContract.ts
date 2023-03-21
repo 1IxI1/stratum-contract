@@ -113,6 +113,14 @@ export class StratumContract implements Contract {
         return stack.readAddress();
     }
 
+    async getExpirationData(provider: ContractProvider) {
+        const { stack } = await provider.get('get_expiration_data', []);
+        return {
+            expiresAt: stack.readNumber(),
+            returnAddress: stack.readAddress()
+        };
+    }
+
     async getStratumData(provider: ContractProvider) {
         const { stack } = await provider.get('get_stratum_data', []);
         return {

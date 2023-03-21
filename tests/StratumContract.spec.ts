@@ -116,6 +116,17 @@ describe('StratumContract', () => {
         const stratumData = await stratumContract.getStratumData();
         expect(stratumData.init).toEqual(true);
     });
+    it('should give expiration data by running the get method', async () => {
+        const expirationData = await stratumContract.getExpirationData();
+        expect(expirationData.expiresAt).toEqual(500);
+        expect(expirationData.returnAddress
+               .equals(owner.address)
+              ).toEqual(true);
+    });
+    it('should give dns item address by running the get method', async () => {
+        const dnsItemAddress = await stratumContract.getDnsItemAddress();
+        expect(dnsItemAddress.equals(dnsItem.address)).toEqual(true);
+    });
     it('should allow by whitelist', async () => {
         let expiration = await stratumContract.getEditorShipExpiration(editorOne.address, BigInt('111'))
         expect(expiration).toEqual(200);
