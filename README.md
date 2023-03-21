@@ -3,8 +3,7 @@
 - **status**: Draft
 - **type**: Contract Interface
 - **authors**: [Victor Syshchenko](https://github.com/1ixi1)
-  (the idea)
-- **created**: 21.03.2023 *(fill with current date)*
+- **created**: 21.03.2023
 - **replaces**: -
 - **replaced by**: -
 
