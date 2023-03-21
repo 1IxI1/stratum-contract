@@ -7,6 +7,7 @@
 - **replaces**: -
 - **replaced by**: -
 
+![](scheme.png)
 
 # Summary
 
