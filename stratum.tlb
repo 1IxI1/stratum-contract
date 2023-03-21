@@ -30,15 +30,16 @@ addr_std$10 anycast:(Maybe Anycast)
    workchain_id:int8 address:bits256  = MsgAddressInt;
 
 
+// category: uint256 -> expire_at: uint64
+_ (HashmapE 256 uint64) = Categories;
 
-categories_expirations#_ (HashmapE 256 uint64) = Categories;
+_ white_list: Bool categories: Categories = Filter;
 
-filter_params#_ white_list: Bool
-    categories: Categories = FilterParams;
+// address_hashpart: uint256 -> Filter
+_ (HashmapE 256 Filter) = Filters;
 
-_ (HashmapE 256 FilterParams) = Filters;
-
-storage#_ domain_address: MsgAddressInt
+storage#_ init: Bool
+    domain_address: MsgAddressInt
     expire_at: uint64
     return_address: MsgAddressInt
     filters: Filters

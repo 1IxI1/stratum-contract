@@ -5,32 +5,26 @@
 ;;
 ;; Storage
 ;;
+;; Bool init?
 ;; MsgAddressInt domain_address
 ;; Uint64 expire_at
 ;; MsgAddressInt return_address
 ;; HashmapE filters
 
+#include "imports/stdlib.fc";
+
 const int op::change_dns_record = 0x4eb1f0f9;
 const int op::transfer = 0x5fcc3d14;
+const int op::ownership_assigned = 0x05138d91;
 
-(slice, int, slice, cell) load_data() impure {
+(int, slice, int, slice, cell) load_data() impure {
     slice ds = get_data().begin_parse();
-    return (ds~load_msg_addr(),
+    return (ds~load_int(1),
+            ds~load_msg_addr(),
             ds~load_uint(64),
             ds~load_msg_addr(),
             ds~load_dict());
 }
-
-;; () store_data(slice domain_address, int expire_at, slice return_address, cell filters) impure {
-;;     set_data(
-;;       begin_cell()
-;;         .store_slice(domain_address)
-;;         .store_uint(expire_at, 64)
-;;         .store_slice(return_address)
-;;         .store_dict(filters)
-;;       .end_cell()
-;;     );
-;; }
 
 () send_msg(slice to_address, int amount, int op, int query_id, builder payload, int send_mode) impure inline {
     var msg = begin_cell()
@@ -75,13 +69,11 @@ int has_access?(slice editor_address, int category, cell filters) impure inline 
     editor_address~skip_bits(11); ;; 2 - addr_code, 1 - anycast, 8 - workchain_id
     int hashpart = editor_address~load_uint(256);
 
-    (cell filter, int success) = filters.udict_get_ref?(256, hashpart);
+    (slice fs, int success) = filters.udict_get?(256, hashpart);
 
     if (~ success) { ;; address is not in list and can't edit anything
         return 0;
     }
-
-    slice fs = filter.begin_parse();
 
     int white_list? = fs~load_int(1);
     cell filter_categories = fs~load_dict();
@@ -89,18 +81,23 @@ int has_access?(slice editor_address, int category, cell filters) impure inline 
     (slice expiration, int in_list?) = filter_categories.udict_get?(256, category);
 
     if (in_list?) {
-        if (white_list?) {
-            int filter_expire_at = expiration~load_uint(64);
+        int filter_expire_at = expiration~load_uint(64);
 
-            if (filter_expire_at < now()) {
-                return 0;
+        if (now() > filter_expire_at) { ;; record expired
+            if (~ white_list?) { ;; if blacklist record expired then allowed to edit
+                return -1;
             }
-            else {
-                return filter_expire_at;
+            else { ;; if whitelist record expired then no access
+                return 0;
             }
         }
         else {
-            return 0;
+            if (~ white_list?) { ;; if blacklist record not expired then no access
+                return 0;
+            }
+            else { ;; if whitelist record not expired then return it's expiration (and it has access)
+                return filter_expire_at;
+            }
         }
     }
     else {
@@ -118,7 +115,27 @@ int has_access?(slice editor_address, int category, cell filters) impure inline 
 
     slice sender_address = cs~load_msg_addr();
 
-    (slice domain_address, int expire_at, slice return_address, cell filters) = load_data();
+    (int init?, slice domain_address, int expire_at, slice return_address, cell filters) = load_data();
+    
+    if (~ init?) {
+        if (in_msg_body.slice_empty?()) {  ;; just accept coins on deploy
+            return ();
+        }
+
+        throw_unless(500, equal_slices(sender_address, domain_address));
+        int op = in_msg_body~load_uint(32);
+        throw_unless(501, op == op::ownership_assigned);
+
+        set_data(begin_cell()
+                   .store_int(-1, 1)
+                   .store_slice(domain_address)
+                   .store_uint(expire_at, 64)
+                   .store_slice(return_address)
+                   .store_dict(filters)
+                 .end_cell());
+
+        return ();
+    }
 
     if (expire_at < now()) {
         transfer_selfdestroy(domain_address, return_address);
@@ -137,7 +154,7 @@ int has_access?(slice editor_address, int category, cell filters) impure inline 
     if (op == op::change_dns_record) {
         int key = in_msg_body.preload_uint(256); ;; keeping payload in slice
         int access = has_access?(sender_address, key, filters);
-        throw_if(500, access == 0); ;; no access
+        throw_if(502, access == 0); ;; no access
 
         send_msg(
             domain_address, 0, op, query_id,
@@ -150,18 +167,23 @@ int has_access?(slice editor_address, int category, cell filters) impure inline 
     throw(0xffff);
 }
 
+(int, slice, int, slice, cell) get_stratum_data() method_id {
+    return load_data();
+}
+
 slice get_dns_item_address() method_id {
     slice ds = get_data().begin_parse();
+    ds~skip_bits(1);
     slice domain_addr = ds~load_msg_addr();
     return domain_addr;
 }
 
 int editorship_expires_at(slice editor_address, int category) method_id {
-    (_, int expire_at, _, cell filters) = load_data();
+    (int init?, _, int expire_at, _, cell filters) = load_data();
 
     int access = has_access?(editor_address, category, filters);
 
-    if (access) { ;; if -1 then no exact expiration
+    if (access == true) { ;; then no exact expiration
         return expire_at;
     }
 
