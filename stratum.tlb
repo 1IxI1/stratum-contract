@@ -38,7 +38,7 @@ _ white_list: Bool categories: Categories = Filter;
 // address_hashpart: uint256 -> Filter
 _ (HashmapE 256 Filter) = Filters;
 
-storage#_ init: Bool
+storage#3c322dff init: Bool
     domain_address: MsgAddressInt
     expire_at: uint64
     return_address: MsgAddressInt
