@@ -1,9 +1,10 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode, Dictionary, DictionaryValue, TupleBuilder } from 'ton-core';
 
 // FiltersDict: <editor: Address -> PersonalFilter: Cell>
-//    PersonalFilter: 
-//      isWhitelist: Bool
-//      filters: FilterCategoriesDict FilterCategoriesDict: <category: Uint256 -> time: Uint64>
+//   PersonalFilter: 
+//     isWhitelist: Bool
+//     filters: FilterCategoriesDict
+//       FilterCategoriesDict: <category: Uint256 -> time: Uint64>
 
 export type FilterCategory = {
     category: bigint,

@@ -1,87 +1,43 @@
-- **TEP**: [0](https://github.com/ton-blockchain/TEPs/pull/0)
-- **title**: DNS Stratum Contract
-- **status**: Draft
-- **type**: Contract Interface
-- **authors**: [Victor Syshchenko](https://github.com/1ixi1)
-- **created**: 21.03.2023
-- **replaces**: -
-- **replaced by**: -
+# TON DNS Stratum Contract
 
-![](scheme.png)
+![](assets/scheme-1.png)
 
-# Summary
-
-DNS Stratum Contract is a layer between users and a domain, allowing users
+Stratum Contract is a layer between users and a domain, allowing users
 to manage records in the domain by sending messages with the body of the
 corresponding format not directly to the domain, but to the layer that
 filters the editing of certain records and forwards messages to the
 domain.
 
+# How filters work
+There is a root filters dictionary, where address hashpart points to a
+Filter for this address.
 
-# Motivation
+![](assets/scheme-2.png)
 
-The potential use of records in TON DNS is very significant. They can be
-used not only to link a wallet or address in TON Storage, but also to
-establish personal data, contacts, and almost anything else, if desired.
+in Filter we have `white_list?` boolean and another hashmap with
+categories of this whitelist or blacklist.
 
-Sometimes, a certain service needs a guarantee that a particular record in
-the domain will remain unchanged for a certain period of time, or even
-permanently.
+![](assets/scheme-3.png)
 
-To prevent developers from coming up with various new contracts for these
-purposes, a standard needs to be created that will primarily serve as
-a model for discovering contracts of this type.
+Keys or categories in TON DNS are consist of 256 bits. Categories hashmap
+links every whitelisted/blacklisted key to it's expiration timestamp.
+After passing this timestamp, editor can't edit (if it whitelist) or 
+can edit (if it blacklist) this record.
 
+![](assets/scheme-4.png)
 
-# Guide / Useful links
+Corresponding to this pictures, if **EQ123** will try to edit record
+`sha256("wallet")` or `sha256("dns_next_resolver")` or `sha256("site")`
+before the 1686600000 second from 1970, it'll fail with exit code 502.
+But **EQ123** can easily change other records, for example `sha256("bag")`.
+And after passing 1686600000 timestamp **EQ123** will be able to edit any
+record in the domain (before the whole stratum contract expiration).
 
-1. [Reference DNS Stratum smart contract](contracts/stratum_contract.fc)
-2. [Reference TON DNS smart contracts](https://github.com/ton-blockchain/dns-contract)
+**EQ456** has in his whitelist only ability to change category
+`sha256("dns_next_resolver")` before time 1686600000. If he will try to
+edit other categories at any time (no matter after or before the timestamp),
+it'll fail.
 
-
-# Specification
-
-### Internal messages
-When receiving an internal message with any specified op to change
-the DNS item's record, a smart contract that implements the DNS Stratum
-standart **should**:
-   * Reject it if the sender does not have editorship for this category
-   or the expiration time passed.
-   * Otherwise should resend it to the DNS Item.
-
-### Get-methods
-A smart contract **must** contain:
-1. `editorship_expires_at(slice editor_address, int category)`
-   returns `int`:
-   * `0` if address has no editorship on this category.
-   * and timestamp of editorship/stratum expiration time otherwise.
-
-2. `get_dns_item_address()` returns `slice dns_item_address` -
-   address of the dns item to which stratum filters messages.
-
-3. `get_expiration_data()` returns `(int expiration_time, slice return_address)`
-   `expiration_time` - timestamp of the time after which the contract
-   may self-destruct after any run and transfer the dns item to
-   the address `return_address`.
-
-
-# Drawbacks
-
-None
-
-
-# Prior art
-None
-
-
-# Rationale and alternatives
-
-Why?
-
-# Unresolved questions
-
-None for now
-
-
-# Future possibilities
-None for now
+![](assets/scheme-5.png)
+**EQ789** can edit any record except `sha256("wallet")` and `sha256("site")`
+before the 1686600000. And he can edit **all the records** after this time.
