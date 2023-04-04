@@ -33,9 +33,9 @@ addr_std$10 anycast:(Maybe Anycast)
 // category: uint256 -> expire_at: uint64
 _ (HashmapE 256 uint64) = Categories;
 
-_ white_list: Bool categories: Categories = Filter;
+filter#89e1 white_list: Bool categories: Categories = Filter;
 
-// address_hashpart: uint256 -> Filter
+// address_hashpart: uint256 -> filter: Filter
 _ (HashmapE 256 Filter) = Filters;
 
 storage#3c322dff init: Bool

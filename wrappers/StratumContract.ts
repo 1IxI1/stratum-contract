@@ -8,7 +8,7 @@ import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, 
 
 export type FilterCategory = {
     category: bigint,
-    time: number;
+    time: number | bigint,
 };
 
 export type Filter = {
@@ -19,13 +19,13 @@ export type Filter = {
 
 export type StratumContractConfig = {
     domain_address: Address;
-    expiresAt: number;
+    expiresAt: number | bigint;
     return_address: Address;
     filters: Filter[];
 };
 
 export type CategoryValue = {
-    time: number;
+    time: number | bigint;
 };
 
 export const CategoryValues: DictionaryValue<CategoryValue> = {
@@ -46,10 +46,12 @@ export type FilterValue = {
 
 export const FilterValues: DictionaryValue<FilterValue> = {
     serialize: (src, builder) => {
+        builder.storeUint(0x89e1, 16); // prefix
         builder.storeBit(src.isWhitelist);
         builder.storeDict(src.categories);
     },
     parse: (src) => {
+        src.loadBits(16); // prefix
         return {
             isWhitelist: src.loadBit(),
             categories: src.loadDict(Dictionary.Keys.BigUint(256), CategoryValues)
@@ -129,7 +131,7 @@ export class StratumContract implements Contract {
             domainAddress: stack.readAddress(),
             expiresAt: stack.readNumber(),
             returnAddress: stack.readAddress(),
-            filters: Dictionary.load(Dictionary.Keys.Buffer(32), FilterValues, stack.readCell())
+            filters: Dictionary.load(Dictionary.Keys.Buffer(32), FilterValues, stack.readCell().asSlice())
         };
     }
 }

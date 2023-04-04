@@ -4,6 +4,7 @@ import { compile, NetworkProvider } from '@ton-community/blueprint';
 
 
 const WALLET_CATEGORY = BigInt('0xe8d44050873dba865aa7c170ab4cce64d90839a34dcfd6cf71d14e0205443b1b');
+const MAX_TIME = BigInt('0xFFFFFFFFFFFFFFFF');
 
 export async function run(provider: NetworkProvider) {
     const dnsItemAddress = Address.parse('EQA0uuol5y2v3wlIbpb_u3QH1imNgVGUNIyljNRg8JS5NQhM');
@@ -17,21 +18,24 @@ export async function run(provider: NetworkProvider) {
     const now = Math.floor(Date.now() / 1000);
     const stratumContract = provider.open(StratumContract.createFromConfig({
                 domain_address: dnsItemAddress,
-                expiresAt: now + 60 * 15,
+                expiresAt: now + 60 * 60 * 24 * 15,  // 15 days
                 filters: [
                     {
                         editor: editorAddress,
                         isWhitelist: true,
                         categories: [
-                            { category: BigInt("111"), time: now + 60 * 10 },
+                            { category: WALLET_CATEGORY,
+                                time: now + 60 * 60 * 24 * 14 },  // 14 days
+                            { category: BigInt("111"),
+                                time: now + 60 * 60 * 24 * 14 },  // 14 days
                         ]
                     },
                     {
                         editor: ownerAddress,
                         isWhitelist: false,
                         categories: [
-                            { category: BigInt("111"), time: now + 60 * 10 },
-                            { category: WALLET_CATEGORY, time: now + 60 * 5 },
+                            { category: BigInt("111"), time: MAX_TIME },
+                            { category: WALLET_CATEGORY, time: MAX_TIME },
                         ]
                     }
                 ],

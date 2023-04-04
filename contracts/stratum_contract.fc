@@ -1,8 +1,6 @@
 ;; DNS Stratum Contract for acting with ".ton" and similar
 ;; contracts https://github.com/ton-blockchain/dns-contract.
 ;;
-;; Made in March, 2023 by @vimlover
-;;
 ;; Storage
 ;;
 ;; Bool init?
@@ -75,6 +73,7 @@ int has_access?(slice editor_address, int category, cell filters) impure inline 
         return 0;
     }
 
+    fs~skip_bits(16); ;; serialization
     int white_list? = fs~load_int(1);
     cell filter_categories = fs~load_dict();
 
